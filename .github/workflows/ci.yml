@@ -30,21 +30,14 @@ jobs:
       - name: Install @tauri-apps/cli
         run: npm install -g @tauri-apps/cli
 
-      - name: Build Next app
-        run: |
-          cd probors-front/probors-react-2.0
-          npm ci
-          npm run build
-
       - name: Build Tauri app
         run: |
-          cd probors-desktop
           npm ci
           npx tauri build
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-build
-          path: probors-desktop/src-tauri/target/release/bundle
+          name: tauri-build-${{ matrix.os }}
+          path: src-tauri/target/release/bundle
 
