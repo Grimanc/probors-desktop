@@ -11,18 +11,29 @@
       "csp": null,
       "capabilities": [
         {
-          "identifier": "main-updater",
-          "description": "Allow main window to check and install updates.",
-          "windows": ["main"],
-          "permissions": ["updater:default"]
+          "identifier": "main-capabilities",
+          "description": "Main window capabilities",
+          "windows": ["main", "update-progress"],
+          "permissions": [
+            "updater:default",
+            "dialog:default",
+            "event:default"
+          ]
         }
       ]
     },
     "windows": [
       {
-        "title": "Probors Desktop",
+        "title": "ProBors",
+        "label": "main",
         "width": 1200,
-        "height": 800
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "center": true,
+        "decorations": true,
+        "resizable": true,
+        "fullscreen": false
       }
     ]
   },
@@ -31,8 +42,29 @@
     "targets": "all",
     "createUpdaterArtifacts": true,
     "icon": ["icons/icon.png", "icons/icon.ico"],
-    "macOS": {},
-    "windows": {}
+    "resources": ["assets/*"],
+    "category": "Finance",
+    "shortDescription": "Stock market analytics and trading tools",
+    "longDescription": "ProBors Desktop provides real-time stock market analytics, AI-powered insights, and professional trading tools.",
+    "copyright": "© 2024 ProBors",
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "dmg": {
+        "appPosition": { "x": 180, "y": 170 },
+        "applicationFolderPosition": { "x": 480, "y": 170 },
+        "windowSize": { "width": 660, "height": 400 }
+      }
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com",
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico"
+      }
+    }
   },
   "plugins": {
     "updater": {
@@ -43,4 +75,3 @@
     }
   }
 }
-

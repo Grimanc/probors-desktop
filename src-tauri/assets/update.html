@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProBors - Update Available</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+    
+    .container {
+      text-align: center;
+      padding: 40px;
+      max-width: 450px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 20px;
+      background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 32px rgba(233, 69, 96, 0.3);
+    }
+    
+    .icon svg {
+      width: 36px;
+      height: 36px;
+      fill: #fff;
+    }
+    
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .version {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 24px;
+    }
+    
+    .progress-container {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #e94560, #ff6b6b);
+      border-radius: 8px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    
+    .status {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 24px;
+    }
+    
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    
+    .btn {
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+      color: #fff;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(233, 69, 96, 0.4);
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+    
+    .notes {
+      margin-top: 20px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      text-align: left;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    
+    .notes h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14v-4H7l5-6v4h4l-5 6z"/>
+      </svg>
+    </div>
+    
+    <h1 id="title">Update Available</h1>
+    <p class="version" id="version">A new version is ready to install</p>
+    
+    <div class="progress-container hidden" id="progress-container">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    
+    <p class="status" id="status">Ready to download and install the latest version.</p>
+    
+    <div class="buttons" id="buttons">
+      <button class="btn btn-secondary" id="later-btn" onclick="updateLater()">Later</button>
+      <button class="btn btn-primary" id="update-btn" onclick="startUpdate()">Update Now</button>
+    </div>
+    
+    <div class="notes hidden" id="notes">
+      <h3>What's New</h3>
+      <p id="notes-content"></p>
+    </div>
+  </div>
+
+  <script>
+    // These will be set by Tauri
+    let updateInfo = null;
+    
+    // Listen for update info from Tauri
+    window.addEventListener('message', (event) => {
+      if (event.data.type === 'update-info') {
+        updateInfo = event.data;
+        document.getElementById('version').textContent = 
+          `Version ${event.data.currentVersion} → ${event.data.newVersion}`;
+        
+        if (event.data.notes) {
+          document.getElementById('notes').classList.remove('hidden');
+          document.getElementById('notes-content').textContent = event.data.notes;
+        }
+      }
+      
+      if (event.data.type === 'update-progress') {
+        updateProgress(event.data.progress);
+      }
+      
+      if (event.data.type === 'update-complete') {
+        updateComplete();
+      }
+      
+      if (event.data.type === 'update-error') {
+        updateError(event.data.error);
+      }
+    });
+    
+    function startUpdate() {
+      document.getElementById('buttons').classList.add('hidden');
+      document.getElementById('progress-container').classList.remove('hidden');
+      document.getElementById('status').textContent = 'Downloading update...';
+      document.getElementById('title').textContent = 'Updating...';
+      
+      // Tell Tauri to start the update
+      if (window.__TAURI__) {
+        window.__TAURI__.event.emit('start-update');
+      }
+    }
+    
+    function updateProgress(progress) {
+      document.getElementById('progress-bar').style.width = progress + '%';
+      document.getElementById('status').textContent = 
+        `Downloading... ${Math.round(progress)}%`;
+    }
+    
+    function updateComplete() {
+      document.getElementById('progress-bar').style.width = '100%';
+      document.getElementById('status').textContent = 'Update complete! Restarting...';
+      document.getElementById('title').textContent = 'Update Complete';
+    }
+    
+    function updateError(error) {
+      document.getElementById('status').textContent = 'Update failed: ' + error;
+      document.getElementById('buttons').classList.remove('hidden');
+      document.getElementById('progress-container').classList.add('hidden');
+      document.getElementById('update-btn').textContent = 'Retry';
+    }
+    
+    function updateLater() {
+      if (window.__TAURI__) {
+        window.__TAURI__.event.emit('update-later');
+      }
+    }
+  </script>
+</body>
+</html>
