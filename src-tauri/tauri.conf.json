@@ -38,7 +38,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQxODQ2MzUxN0M4Njg1QzEKUldUQmhZWjhVV09FUVVmN0hRZm9Bc2pIdHpyRlNmYlZ1MWhyc2tPdGpmLzZnYVlnWWlTT0tnSVcK",
       "endpoints": [
-        "https://github.com/OWNER/REPO/releases/latest/download/latest.json"
+        "https://github.com/Grimanc/probors-desktop/releases/latest/download/latest.json"
       ]
     }
   }
