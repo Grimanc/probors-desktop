@@ -28,15 +28,16 @@ jobs:
       - name: Install @tauri-apps/cli
         run: npm install -g @tauri-apps/cli
 
-      - name: Build frontend
+      - name: Build frontend (optional; repo is desktop-only)
         run: |
-          cd probors-front/probors-react-2.0
-          npm ci
-          npm run build
+          if [ -d "probors-front/probors-react-2.0" ]; then
+            cd probors-front/probors-react-2.0 && npm ci && npm run build
+          else
+            echo "Desktop-only repo; app loads https://dashboard.probors.com in production."
+          fi
 
       - name: Build Tauri app
         run: |
-          cd probors-desktop
           npm ci
           npx tauri build
 
@@ -44,7 +45,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tauri-build-${{ matrix.os }}
-          path: probors-desktop/src-tauri/target/release/bundle
+          path: src-tauri/target/release/bundle
 
   publish-to-s3:
     needs: build
@@ -108,8 +109,8 @@ jobs:
         run: |
           # Read version from tauri.conf.json if present
           VERSION="0.1.0"
-          if [ -f probors-desktop/src-tauri/tauri.conf.json ]; then
-            VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' probors-desktop/src-tauri/tauri.conf.json | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
+          if [ -f src-tauri/tauri.conf.json ]; then
+            VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' src-tauri/tauri.conf.json | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
           fi
           HOST="${{ secrets.S3_PUBLIC_HOST }}"
           PREFIX="probors-desktop/${GITHUB_SHA}"
@@ -232,8 +233,8 @@ jobs:
         run: |
           set -e
           VERSION="0.1.0"
-          if [ -f probors-desktop/src-tauri/tauri.conf.json ]; then
-            VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' probors-desktop/src-tauri/tauri.conf.json | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
+          if [ -f src-tauri/tauri.conf.json ]; then
+            VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' src-tauri/tauri.conf.json | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
           fi
           TAG="desktop-v${GITHUB_SHA}"
           BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
