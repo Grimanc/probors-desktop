@@ -1,0 +1,46 @@
+{
+  "productName": "ProBors",
+  "version": "0.1.0",
+  "identifier": "com.probors.desktop",
+  "build": {
+    "devUrl": "https://dashboard.probors.com",
+    "frontendDist": "https://dashboard.probors.com"
+  },
+  "app": {
+    "security": {
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "main-updater",
+          "description": "Allow main window to check and install updates.",
+          "windows": ["main"],
+          "permissions": ["updater:default"]
+        }
+      ]
+    },
+    "windows": [
+      {
+        "title": "Probors Desktop",
+        "width": 1200,
+        "height": 800
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "icon": ["icons/icon.png"],
+    "macOS": {},
+    "windows": {}
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQxODQ2MzUxN0M4Njg1QzEKUldUQmhZWjhVV09FUVVmN0hRZm9Bc2pIdHpyRlNmYlZ1MWhyc2tPdGpmLzZnYVlnWWlTT0tnSVcK",
+      "endpoints": [
+        "https://github.com/OWNER/REPO/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}
+

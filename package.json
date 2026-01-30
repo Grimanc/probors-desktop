@@ -1,0 +1,18 @@
+{
+  "name": "probors-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:next": "cd ../probors-front/probors-react-2.0 && npm ci && npm run dev",
+    "dev:tauri": "tauri dev",
+    "dev": "concurrently \"npm run dev:next\" \"npm run dev:tauri\"",
+    "build:next": "cd ../probors-front/probors-react-2.0 && npm ci && npm run build",
+    "build:tauri": "tauri build",
+    "build": "npm run build:next && npm run build:tauri",
+    "start:next": "cd ../probors-front/probors-react-2.0 && npm run start"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "concurrently": "^8.0.0"
+  }
+}

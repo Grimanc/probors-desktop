@@ -1,0 +1,275 @@
+name: Build desktop releases
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install @tauri-apps/cli
+        run: npm install -g @tauri-apps/cli
+
+      - name: Build frontend
+        run: |
+          cd probors-front/probors-react-2.0
+          npm ci
+          npm run build
+
+      - name: Build Tauri app
+        run: |
+          cd probors-desktop
+          npm ci
+          npx tauri build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-build-${{ matrix.os }}
+          path: probors-desktop/src-tauri/target/release/bundle
+
+  publish-to-s3:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ secrets.AWS_ACCESS_KEY_ID && secrets.AWS_SECRET_ACCESS_KEY && secrets.S3_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install AWS CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tauri-build-ubuntu-latest
+          path: ./artifacts/linux
+        continue-on-error: true
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tauri-build-macos-latest
+          path: ./artifacts/macos
+        continue-on-error: true
+
+      - name: Download windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tauri-build-windows-latest
+          path: ./artifacts/windows
+        continue-on-error: true
+
+      - name: Configure AWS credentials
+        run: |
+          aws configure set aws_access_key_id "${{ secrets.AWS_ACCESS_KEY_ID }}"
+          aws configure set aws_secret_access_key "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          aws configure set region "${{ secrets.AWS_REGION || 'us-east-1' }}"
+
+      - name: Upload artifacts to S3
+        run: |
+          set -e
+          BUCKET="${{ secrets.S3_BUCKET }}"
+          PREFIX="probors-desktop/${GITHUB_SHA}"
+          for f in artifacts/*/*; do
+            if [ -f "$f" ]; then
+              aws s3 cp "$f" "s3://$BUCKET/$PREFIX/$(basename "$f")" --acl public-read
+            fi
+          done
+
+      - name: Create latest metadata JSON (Tauri updater format)
+        id: genmeta
+        env:
+          S3_HOST: ${{ secrets.S3_PUBLIC_HOST }}
+          PREFIX: "probors-desktop/${GITHUB_SHA}"
+          VERSION: ${{ github.event.repository.default_branch == 'main' && '0.1.0' || '0.1.0' }}
+        run: |
+          # Read version from tauri.conf.json if present
+          VERSION="0.1.0"
+          if [ -f probors-desktop/src-tauri/tauri.conf.json ]; then
+            VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' probors-desktop/src-tauri/tauri.conf.json | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
+          fi
+          HOST="${{ secrets.S3_PUBLIC_HOST }}"
+          PREFIX="probors-desktop/${GITHUB_SHA}"
+          PUB_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+          # Build platforms object: Tauri expects darwin-aarch64, darwin-x86_64, windows-x86_64 with "url" and "signature"
+          PLATFORMS="{}"
+          for dir in artifacts/macos artifacts/windows; do
+            for f in "$dir"/*; do
+              [ -f "$f" ] || continue
+              base=$(basename "$f")
+              # Skip .sig and .app - we want installer/archive and its .sig
+              case "$base" in
+                *.sig) continue ;;
+                *.app) continue ;;
+              esac
+              sig_file="$f.sig"
+              sig_content=""
+              [ -f "$sig_file" ] && sig_content=$(cat "$sig_file" | jq -Rs .)
+              [ -z "$sig_content" ] && sig_content='""'
+              url="https://${HOST}/${PREFIX}/${base}"
+              # Map file to Tauri platform key
+              case "$base" in
+                *aarch64*.dmg|*aarch64*.tar.gz) key="darwin-aarch64" ;;
+                *x86_64*.dmg|*x86_64*.tar.gz|*universal*.dmg) key="darwin-x86_64" ;;
+                *aarch64*) key="darwin-aarch64" ;;
+                *x86_64*|*x64*) key="windows-x86_64" ;;
+                *arm64*) key="windows-aarch64" ;;
+                *) key="unknown"; continue ;;
+              esac
+              # Only add if we have a known key (avoid overwriting with "unknown")
+              if [ "$key" != "unknown" ]; then
+                PLATFORMS=$(echo "$PLATFORMS" | jq --arg k "$key" --arg u "$url" --argjson s "$sig_content" '. + {($k): {url: $u, signature: $s}}')
+              fi
+            done
+          done
+
+          # If jq produced nothing useful, fall back to simple structure
+          if [ "$PLATFORMS" = "{}" ]; then
+            MAC=$(ls artifacts/macos/*.dmg artifacts/macos/*.tar.gz 2>/dev/null | head -n1 || true)
+            WIN=$(ls artifacts/windows/*.exe artifacts/windows/*.msi 2>/dev/null | head -n1 || true)
+            MAC_SIG=""
+            WIN_SIG=""
+            [ -n "$MAC" ] && [ -f "${MAC}.sig" ] && MAC_SIG=$(cat "${MAC}.sig" | jq -Rs .)
+            [ -n "$WIN" ] && [ -f "${WIN}.sig" ] && WIN_SIG=$(cat "${WIN}.sig" | jq -Rs .)
+            [ -z "$MAC_SIG" ] && MAC_SIG='""'
+            [ -z "$WIN_SIG" ] && WIN_SIG='""'
+            PLATFORMS=$(jq -n \
+              --arg mac_url "https://${HOST}/${PREFIX}/$(basename "$MAC")" \
+              --arg win_url "https://${HOST}/${PREFIX}/$(basename "$WIN")" \
+              --argjson mac_sig "$MAC_SIG" \
+              --argjson win_sig "$WIN_SIG" \
+              '{ "darwin-aarch64": { url: $mac_url, signature: $mac_sig }, "windows-x86_64": { url: $win_url, signature: $win_sig } }')
+          fi
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$PUB_DATE" \
+            --argjson platforms "$PLATFORMS" \
+            '{ version: $version, notes: "", pub_date: $pub_date, platforms: $platforms }' > latest.json
+          cat latest.json
+
+      - name: Upload latest.json to S3
+        run: |
+          BUCKET="${{ secrets.S3_BUCKET }}"
+          aws s3 cp latest.json "s3://$BUCKET/probors-desktop/latest.json" --acl public-read --content-type "application/json"
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tauri-build-ubuntu-latest
+          path: ./artifacts/ubuntu
+        continue-on-error: true
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tauri-build-macos-latest
+          path: ./artifacts/macos
+        continue-on-error: true
+
+      - name: Download windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tauri-build-windows-latest
+          path: ./artifacts/windows
+        continue-on-error: true
+
+      - name: Create GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: "desktop-v${{ github.sha }}"
+          release_name: "ProBors Desktop v0.1.0"
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release artifacts
+        run: |
+          set -e
+          TAG="desktop-v${GITHUB_SHA}"
+          for dir in artifacts/macos artifacts/windows artifacts/ubuntu; do
+            [ -d "$dir" ] || continue
+            while IFS= read -r -d '' f; do
+              [ -f "$f" ] && gh release upload "$TAG" "$f" --clobber || true
+            done < <(find "$dir" -type f -print0)
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate and upload latest.json (Tauri updater)
+        run: |
+          set -e
+          VERSION="0.1.0"
+          if [ -f probors-desktop/src-tauri/tauri.conf.json ]; then
+            VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' probors-desktop/src-tauri/tauri.conf.json | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
+          fi
+          TAG="desktop-v${GITHUB_SHA}"
+          BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+          PUB_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+          read_sig() { [ -f "$1.sig" ] && jq -Rs . < "$1.sig" || echo '""'; }
+
+          MAC_FILE=$(find artifacts/macos -type f \( -name "*.tar.gz" -o -name "*.dmg" \) ! -name "*.sig" | head -n1 || true)
+          WIN_FILE=$(find artifacts/windows -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.nsis.zip" \) ! -name "*.sig" | head -n1 || true)
+
+          MAC_URL=""; MAC_SIG='""'
+          WIN_URL=""; WIN_SIG='""'
+          [ -n "$MAC_FILE" ] && MAC_URL="${BASE}/$(basename "$MAC_FILE")" && MAC_SIG=$(read_sig "$MAC_FILE")
+          [ -n "$WIN_FILE" ] && WIN_URL="${BASE}/$(basename "$WIN_FILE")" && WIN_SIG=$(read_sig "$WIN_FILE")
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$PUB_DATE" \
+            --arg mac_url "$MAC_URL" \
+            --arg win_url "$WIN_URL" \
+            --argjson mac_sig "$MAC_SIG" \
+            --argjson win_sig "$WIN_SIG" \
+            '{
+              version: $version,
+              notes: "ProBors Desktop release",
+              pub_date: $pub_date,
+              platforms: {
+                "darwin-aarch64": { url: $mac_url, signature: $mac_sig },
+                "windows-x86_64": { url: $win_url, signature: $win_sig }
+              }
+            }' > latest.json
+          gh release upload "$TAG" latest.json --clobber
+          echo "latest.json uploaded; updater URL: https://github.com/${{ github.repository }}/releases/latest/download/latest.json"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release complete
+        run: echo "Desktop release job finished."
+
