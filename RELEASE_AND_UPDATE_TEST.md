@@ -1,5 +1,7 @@
 # Release on GitHub and Test Updates
 
+**Important:** GitHub Actions only runs workflows that live at the **repository root**: `.github/workflows/*.yml`. A copy of the desktop release workflow is at the repo root (`.github/workflows/desktop-release.yml`). If you only had it under `probors-desktop/.github/workflows/`, it would never run.
+
 ## 1. Set your GitHub repo in the app
 
 The updater checks GitHub for `latest.json`. Set your repo in **`src-tauri/tauri.conf.json`**:
