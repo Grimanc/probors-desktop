@@ -28,14 +28,6 @@ jobs:
       - name: Install @tauri-apps/cli
         run: npm install -g @tauri-apps/cli
 
-      - name: Build frontend (optional; repo is desktop-only)
-        run: |
-          if [ -d "probors-front/probors-react-2.0" ]; then
-            cd probors-front/probors-react-2.0 && npm ci && npm run build
-          else
-            echo "Desktop-only repo; app loads https://dashboard.probors.com in production."
-          fi
-
       - name: Build Tauri app
         run: |
           npm ci
