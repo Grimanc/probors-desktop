@@ -17,7 +17,7 @@
           "permissions": [
             "updater:default",
             "dialog:default",
-            "event:default"
+            "core:event:default"
           ]
         }
       ]

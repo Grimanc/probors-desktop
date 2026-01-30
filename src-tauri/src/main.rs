@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[allow(unused_imports)]
 use tauri::Manager;
 use tauri_plugin_updater::UpdaterExt;
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind, MessageDialogButtons};
