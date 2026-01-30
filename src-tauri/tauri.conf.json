@@ -36,7 +36,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQxODQ2MzUxN0M4Njg1QzEKUldUQmhZWjhVV09FUVVmN0hRZm9Bc2pIdHpyRlNmYlZ1MWhyc2tPdGpmLzZnYVlnWWlTT0tnSVcK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJBOUJGNjA2MUNBNTg4RUIKUldUcmlLVWNCdmFiS2t5eHZrMmtnbFNhUFZFWEF2QnJ6SnNiMnNnRUZrRk1Odm1QTUJIOGVhbjgK",
       "endpoints": [
         "https://github.com/Grimanc/probors-desktop/releases/latest/download/latest.json"
       ]
