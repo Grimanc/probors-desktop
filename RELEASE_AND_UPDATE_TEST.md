@@ -1,6 +1,6 @@
 # Release on GitHub and Test Updates
 
-**Important:** GitHub Actions only runs workflows that live at the **repository root**: `.github/workflows/*.yml`. A copy of the desktop release workflow is at the repo root (`.github/workflows/desktop-release.yml`). If you only had it under `probors-desktop/.github/workflows/`, it would never run.
+**Important:** GitHub Actions only runs workflows at the **root of the repo**. If your **Git repo is the `probors-desktop` folder** (this folder is the repo root), then the workflow lives here: **`probors-desktop/.github/workflows/desktop-release.yml`** — that is the repo root, so GitHub will run it when you push. All paths in the workflow are relative to that root (e.g. `src-tauri/`, no `probors-desktop/` prefix).
 
 ## 1. Set your GitHub repo in the app
 
