@@ -1,8 +1,7 @@
 name: Build desktop installers
 
+# Only on PRs so push to main runs desktop-release.yml only (avoids 2 workflows canceling each other)
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
 
